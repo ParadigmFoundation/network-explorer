@@ -54,14 +54,6 @@ Structure of the stringified object streamed to each connection, updated upon ea
             "uptime_percent": 11,   // 17 (d)
             "first_block": 45102,   // 17 (e)
             "last_voted": 1327413   // 17 (f)
-        },
-        {
-            "moniker": "bs2",
-            "stake": 789600000000,
-            "reward": -16300000000,
-            "uptime_percent": 100,
-            "first_block": 0,
-            "last_voted": 1327413
         }
         // ...
     ]
