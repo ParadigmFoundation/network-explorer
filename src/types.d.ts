@@ -1,7 +1,7 @@
 interface INetworkData {
     token: {
         total_supply?: number;
-        price?: string;
+        price?: number;
     }
     bandwidth: {
         total_limit?: number;
@@ -29,7 +29,7 @@ interface IOrder {
     poster_address: string;
     maker_address: string;
     subcontract_address: string;
-    order_type?: string;
+    order_type: string;
 }
 
 interface IValidator {

@@ -95,29 +95,30 @@ orderStreamWs.onmessage = async (msg) => {
     // find and update `network` values 
     data.network.block_height = height;
     data.network.last_block_time = time;
-    data.network.total_validator_stake = 0; // TODO (in ParadigmCore)
     data.network.avg_block_interval = calculateAverageBlockTime(lastBlockTimes);
     data.network.number_validators = await (async () => {
         const valListStr = await queryState(orderStreamWs, "validators")
         const valListArr = valListStr.split(",");
         return valListArr.length;
     })();
+    data.network.total_validator_stake = 0; // TODO (in ParadigmCore)
 
     // find and update `token` values
-    data.token.price = "0"; // @todo consider
-    data.token.total_supply = await (async () => {
-        const rawTotalSupply = await paradigm.digmToken.totalSupply();
-        return web3.utils.fromWei(rawTotalSupply);
-    })();
+    data.token.total_supply = (await paradigm.digmToken.totalSupply()).toString();
+    data.token.price = 0; // @todo consider
 
     // find and update `bandwidth` values
-    data.bandwidth.total_orders = await queryState(orderStreamWs, "orderCounter")
     data.bandwidth.total_limit = parseInt(await queryState(orderStreamWs, "round/limit"));
-    data.bandwidth.rebalance_period_number = await queryState(orderStreamWs, "round/number");
+    data.bandwidth.total_orders = await queryState(orderStreamWs, "orderCounter");
     data.bandwidth.remaining_limit = await (async () => {
         const used = parseInt(await queryState(orderStreamWs, "round/limitUsed"));
         const remaining = data.bandwidth.total_limit - used;
         return remaining;
+    })();
+    data.bandwidth.number_posters = await (async () => {
+        const posterListStr = await queryState(orderStreamWs, "posters")
+        const posterListArr = posterListStr.slice(1, -1).split(",");
+        return posterListArr.length;
     })();
     data.bandwidth.sec_to_next_period = await (async () => {
         const currentBlock = await web3.eth.getBlockNumber();
@@ -130,11 +131,7 @@ orderStreamWs.onmessage = async (msg) => {
         data.bandwidth.period_end_eth_block = endingBlock;
         return time > 0 ? time : 0;
     })();
-    data.bandwidth.number_posters = await (async () => {
-        const posterListStr = await queryState(orderStreamWs, "posters")
-        const posterListArr = posterListStr.slice(1, -1).split(",");
-        return posterListArr.length;
-    })();
+    data.bandwidth.rebalance_period_number = await queryState(orderStreamWs, "round/number");
 
     // update clients with new data
     if (height && time) {

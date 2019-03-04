@@ -15,7 +15,7 @@ Structure of the stringified object streamed to each connection, updated upon ea
 
 {
     "token": {
-        "total_supply": 11111111,   // 1                   
+        "total_supply": "11111111", // 1                   
         "price": 0                  // 2
     },
     "bandwidth": {      
@@ -24,9 +24,9 @@ Structure of the stringified object streamed to each connection, updated upon ea
         "remaining_limit": 73125,           // 5
         "number_posters": 1514,             // 6
         "sec_to_next_period": 60,           // 7
-        "rebalance_period_number": 27940,   // 8
-        "period_end_eth_block": 5230844,    // 9
-        "current_eth_block": 5230840        // 10
+        "period_end_eth_block": 5230844,    // 8
+        "current_eth_block": 5230840        // 9
+        "rebalance_period_number": 27940,   // 10
     },
     "network": {
         "block_height": 1327413,                // 11
@@ -76,11 +76,11 @@ Structure of the stringified object streamed to each connection, updated upon ea
 
 1. **Seconds to next period** (`bandwidth.sec_to_next_period`): a (very) rough estimation of the number of seconds to the next rebalance period. Taken by counting the number of Ethereum blocks until the next period, multiplied by the average Ethereum block-time.
 
-1. **Rebalance period number** (`bandwidth.rebalance_period_number`): an incremental counter that tracks the number of rebalance periods that have occurred. Displays the number of the currently active period (not the last completed).
-
 1. **Period end Ethereum block** (`bandwidth.period_end_eth_block`): the Ethereum block number at which the current rebalance period ends.
 
 1. **Current Ethereum block** (`bandwidth.current_eth_block`): the best-known (highest) Ethereum block number. Updated each time an OrderStream block is committed.
+
+1. **Rebalance period number** (`bandwidth.rebalance_period_number`): an incremental counter that tracks the number of rebalance periods that have occurred. Displays the number of the currently active period (not the last completed).
 
 1. **Block height** (`network.block_height`): updates with each new committed block, the `block_height` increases by 1. It tracks the current height of the OrderStream blockchain. 
 
