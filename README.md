@@ -15,7 +15,7 @@ Structure of the stringified object streamed to each connection, updated upon ea
 
 {
     "token": {
-        "total_supply": "111111",   // 1                   
+        "total_supply": 11111111,     // 1                   
         "price": "12.34"            // 2
     },
     "bandwidth": {      
