@@ -48,7 +48,7 @@ Structure of the stringified object streamed to each connection, updated upon ea
     "validators": [                 // 17
         // ...
         {
-            "moniker": "bs1",       // 17 (a)
+            "public_key": "...",    // 17 (a)
             "stake": 1345600000000, // 17 (b)
             "reward": 1200000000,   // 17 (c)
             "uptime_percent": 11,   // 17 (d)
@@ -104,7 +104,7 @@ Structure of the stringified object streamed to each connection, updated upon ea
 
 1. **Validators** (`validators`): an array of objects (defined below) for each active validator on the network. 
 
-    a. **Moniker** (`validators[N].moniker`): a human-readable string name used to identify the validator.
+    a. **Public Key** (`validators[N].public_key`): the validators active tendermint public key, which corresponds to a current validating private key. Hashed in multiple ways to generate `node_id`, etc. Also used to query the `ValidatorRegistry` contract.
 
     b. **Stake** (`validators[N].stake`): a specific validators DIGM stake (in `wei`) currently held in the `ValidatorRegistry` contract.
 

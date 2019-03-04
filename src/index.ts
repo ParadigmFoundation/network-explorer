@@ -92,13 +92,18 @@ orderStreamWs.onmessage = async (msg) => {
 
     }
 
+    // will store validator info
+    let validatorIds: string[];
+    const validators: IValidator[] = [];
+
     // find and update `network` values 
     data.network.block_height = height;
     data.network.last_block_time = time;
     data.network.avg_block_interval = calculateAverageBlockTime(lastBlockTimes);
     data.network.number_validators = await (async () => {
         const valListStr = await queryState(orderStreamWs, "validators")
-        const valListArr = valListStr.split(",");
+        const valListArr = valListStr.slice(1, -1).split(",");
+        validatorIds = valListArr;
         return valListArr.length;
     })();
     data.network.total_validator_stake = 0; // TODO (in ParadigmCore)
@@ -132,6 +137,24 @@ orderStreamWs.onmessage = async (msg) => {
         return time > 0 ? time : 0;
     })();
     data.bandwidth.rebalance_period_number = await queryState(orderStreamWs, "round/number");
+
+    // get validator info
+    for (let i = 0; i < validatorIds.length; i++) {
+        const validator = {};
+        const valId = validatorIds[i];
+
+        let moniker, stake, reward, firstBlock, lastVoted, uptimePercent; 
+
+        uptimePercent = await (async () => {
+            // const totalVotes = await queryState(orderStreamWs, `validators/${valId}`);
+            const totalVotes = await queryState(orderStreamWs, `validators/${valId}/totalVotes`);
+            firstBlock = await queryState(orderStreamWs, `validators/${valId}/firstVote`);
+            lastVoted = await queryState(orderStreamWs, `validators/${valId}/lastVoted`);
+            return Math.round(100 * (totalVotes / (data.network.block_height - firstBlock)));
+        })();   
+        
+        console.log(uptimePercent);
+    }
 
     // update clients with new data
     if (height && time) {
