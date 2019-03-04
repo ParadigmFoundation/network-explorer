@@ -1,7 +1,7 @@
 {
     "token": {
-        "total_supply": "111111",
-        "price": "12.34"
+        "total_supply": 111111111,
+        "price": 0
     },
     "bandwidth": {
         "total_limit": 75000,
