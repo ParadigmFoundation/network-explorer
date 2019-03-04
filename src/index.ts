@@ -1,0 +1,165 @@
+/**
+ * @date 1 March 2019
+ * @author Henry Harder
+ * 
+ * Very sloppy. Cleanup coming soon.
+ * 
+ * REQUIRED ENV VARS:
+ * - PORT: a tcp port to bind the ws server to
+ * - AVERAGE_OVER: a number of blocks to average the block-time interval over
+ * - ORDERSTREAM_NODE_URL: the full url of a ParadigmCore JSONRPC server
+ * - WEB3_URL: an Ethereum JSONRPC provider URL
+**/
+
+// load config 
+require("dotenv").config();
+
+// imports
+import * as ws from "ws";
+import * as uuid from "uuid/v4";
+import * as _ from "lodash";
+import * as Paradigm from "paradigm-connect";
+import Web3 = require('web3');
+import { Server } from "ws";
+import { EventEmitter } from "events";
+
+// local functions
+import { addBlockTime, calculateAverageBlockTime, queryState } from "./functions";
+
+// avoid compiler errors (grr @web3.js)
+let newWeb3: any = Web3;
+
+// destructure vars
+const {
+    ORDERSTREAM_NODE_URL, 
+    PORT,
+    AVERAGE_OVER,
+    WEB3_URL
+} = process.env;
+
+// stores network data object
+const data: INetworkData = {
+    token: {},
+    bandwidth: {},
+    network: {},
+    transactions: [],
+    validators: []
+}
+
+// basic setup
+// const paradigm = new Paradigm()
+const clients: { [key: string]: ws } = {};
+const lastBlockTimes: Array<number> = [];
+let lastTime: number = null;
+
+// emitter for synchronizing
+const ee = new EventEmitter();
+
+// setup WS server
+const server = new Server({
+    port: parseInt(PORT)
+});
+
+// setup web3 connection
+// setup paradigm connection
+const paradigm = new Paradigm();
+const web3 = new newWeb3(WEB3_URL);
+
+// setup connection to orderstream
+const orderStreamWs = new ws(ORDERSTREAM_NODE_URL);
+const orderStreamId = uuid();
+
+orderStreamWs.onmessage = async (msg) => {
+    // will store this block's diff
+    let diff;
+
+    // pull/parse some values
+    const parsed = JSON.parse(msg.data.toString())
+    const { height, time } = parsed.result
+    const timeNum = parseInt(time);
+
+    // skip if not a bock
+    if (_.isNaN(timeNum)) return;
+
+    // calculate average block time
+    if (lastBlockTimes.length === 0 && !lastTime) {
+        lastTime = timeNum; 
+        addBlockTime(lastBlockTimes, 0, parseInt(AVERAGE_OVER));
+    } else {
+        diff = timeNum - lastTime;
+        addBlockTime(lastBlockTimes, diff, parseInt(AVERAGE_OVER));
+        lastTime = timeNum;
+
+    }
+
+    // update mem values 
+    data.network.block_height = height;
+    data.network.last_block_time = time;
+    data.network.total_validator_stake = 0; // TODO (in ParadigmCore)
+    data.network.time_to_next_period = await (async () => {
+        const currentBlock = await web3.eth.getBlockNumber();
+        const endingBlock = parseInt(await queryState(orderStreamWs, "round/endsAt"));
+        const rawDiff = endingBlock - currentBlock;
+        const time = (rawDiff * 15) + 15;
+        return time > 0 ? time : 0;
+    })();
+    data.token.total_supply = await (async () => {
+        const rawTotalSupply = await paradigm.digmToken.totalSupply();
+        return web3.utils.fromWei(rawTotalSupply);
+    })();
+    data.token.price = "free";
+    data.bandwidth.total_limit = parseInt(await queryState(orderStreamWs, "round/limit"));
+    data.bandwidth.remaining_limit = await (async () => {
+        const used = parseInt(await queryState(orderStreamWs, "round/limitUsed"));
+        const remaining = data.bandwidth.total_limit - used;
+        return remaining;
+    })();
+    data.network.avg_block_interval = calculateAverageBlockTime(lastBlockTimes);
+    data.bandwidth.total_orders = await queryState(orderStreamWs, "orderCounter")
+    data.network.rebalance_period_number = await queryState(orderStreamWs, "round/number");
+    data.network.number_validators = await (async () => {
+        const valListStr = await queryState(orderStreamWs, "validators")
+        const valListArr = valListStr.split(",");
+        return valListArr.length;
+    })();
+
+    // update clients with new data
+    if (height && time) {
+        Object.keys(clients).forEach((id) => {
+            const client = clients[id];
+            if (client.readyState !== client.OPEN) {
+                return;
+            }
+            client.send(JSON.stringify(data));
+        })
+    }
+}
+
+// subscribe to paradigmcore JSONRPC 
+orderStreamWs.onopen = () => {
+    orderStreamWs.send(JSON.stringify({
+        jsonrpc: "2.0",
+        id: orderStreamId,
+        method: "subscription.start",
+        params: {
+            eventName: "block",
+            filters: [
+                "height",
+                "time"
+            ]
+        }
+    }));
+}
+
+// handle client connection
+server.on("connection", (socket, request) => {
+    const clientId = uuid();
+    clients[clientId] = socket;
+    socket.onclose = () => {
+        console.log("deleting client on disconnect");
+        delete clients[clientId];
+    }
+});
+
+
+
