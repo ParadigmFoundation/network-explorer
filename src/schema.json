@@ -4,18 +4,21 @@
         "price": "12.34"
     },
     "bandwidth": {
-        "total_limit": "12002453",
-        "total_orders": "23123123",
-        "remaining_limit": "123123"
+        "total_limit": 75000,
+        "total_orders": 1210351,
+        "remaining_limit": 73125,
+        "number_posters": 1514,
+        "sec_to_next_period": 60,
+        "rebalance_period_number": 27940,
+        "period_end_eth_block": 5230844,
+        "current_eth_block": 5230840
     },
     "network": {
-        "block_height": "345345",
-        "last_block_time": "18293719283",
-        "avg_block_interval": "920",
-        "number_validators": "867",
-        "total_validator_stake": "7234666",
-        "rebalance_period_number": "731",
-        "time_to_next_period": "2300"
+        "block_height": 1327413,
+        "last_block_time": 1551727994832,
+        "avg_block_interval": 1492,
+        "number_validators": 32,
+        "total_validator_stake": 6531480650000000000
     },
     "transactions": [
         {
@@ -34,17 +37,19 @@
     "validators": [
         {
             "moniker": "bs1",
-            "stake": "13456",
-            "reward": "12",
-            "uptime_percent": "11",
-            "first_block": "0"
+            "stake": 1345600000000,
+            "reward": 1200000000,
+            "uptime_percent": 11,
+            "first_block": 45102,
+            "last_voted": 1327413
         },
         {
             "moniker": "bs2",
-            "stake": "7896",
-            "reward": "-16",
-            "uptime_percent": "100",
-            "first_block": "0"
+            "stake": 789600000000,
+            "reward": -16300000000,
+            "uptime_percent": 100,
+            "first_block": 0,
+            "last_voted": 1327413
         }
     ]
 }
