@@ -62,9 +62,9 @@ Structure of the stringified object streamed to each connection, updated upon ea
 
 ### Annotations
 
-1. **DIGM token supply:** the total number of DIGM tokens in circulation. Keep in mind this number will be in units of `wei` (smallest divisible unit) so for the actual "quantity" of full DIGM tokens, this value will need to be multiplied by `1 * 10^18`.
+1. **DIGM token supply** (`token.total_supply`): the total number of DIGM tokens in circulation. Keep in mind this number will be in units of `wei` (smallest divisible unit) so for the actual "quantity" of full DIGM tokens, this value will need to be multiplied by `1 * 10^18`.
 
-1. **DIGM token price:** there is currently no concept of DIGM "price", so for now, this value can be ignored. 
+1. **DIGM token price** (`token.price`): there is currently no concept of DIGM "price", so for now, this value can be ignored. 
 
 1. **Total limit** (`bandwidth.total_limit`): this value is the current network-agreed-upon value for the total number of `order` transactions that can be accepted per rebalance period. It is a consensus-critical parameter that is unlikely to change very often.
 
