@@ -54,6 +54,7 @@ Structure of the stringified object streamed to each connection, updated upon ea
             "uptime_percent": 11,   // 17 (d)
             "first_block": 45102,   // 17 (e)
             "last_voted": 1327413   // 17 (f)
+            "power": 10             // 17 (g)
         }
         // ...
     ]
@@ -115,6 +116,8 @@ Structure of the stringified object streamed to each connection, updated upon ea
     e. **First block** (`validators[N].first_block`): the height of the first OrderStream block that a given validator voted on. Used as, or to calculate a validators "age" in the network.
 
     f. **Last voted** (`validators[N].last_voted`): the height of OrderStream network at which a given validator voted (or proposed) a block.
+
+    g. **Vote power** (`validators[N].power`): the vote power the validator has on the Tendermint chain. Also affects how often a given validator is selected as block proposer.
 
 ## Usage
 

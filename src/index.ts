@@ -94,7 +94,7 @@ orderStreamWs.onmessage = async (msg) => {
 
     // will store validator info
     let validatorIds: string[];
-    const validators: IValidator[] = [];
+    const validators: any[] = [];
 
     // find and update `network` values 
     data.network.block_height = height;
@@ -140,21 +140,38 @@ orderStreamWs.onmessage = async (msg) => {
 
     // get validator info
     for (let i = 0; i < validatorIds.length; i++) {
+        // setup validator
         const validator = {};
         const valId = validatorIds[i];
 
-        let moniker, stake, reward, firstBlock, lastVoted, uptimePercent; 
+        // make necessary queries to local node's state
+        const totalVotes = parseInt(await queryState(orderStreamWs, `validators/${valId}/totalVotes`));
+        const firstBlock = parseInt(await queryState(orderStreamWs, `validators/${valId}/firstVote`));
+        const lastVoted = parseInt(await queryState(orderStreamWs, `validators/${valId}/lastVoted`));
+        const publicKey = await queryState(orderStreamWs, `validators/${valId}/publicKey`);
+        const stake = await queryState(orderStreamWs, `validators/${valId}/balance`);
+        const power = await queryState(orderStreamWs, `validators/${valId}/power`);
 
-        uptimePercent = await (async () => {
-            // const totalVotes = await queryState(orderStreamWs, `validators/${valId}`);
-            const totalVotes = await queryState(orderStreamWs, `validators/${valId}/totalVotes`);
-            firstBlock = await queryState(orderStreamWs, `validators/${valId}/firstVote`);
-            lastVoted = await queryState(orderStreamWs, `validators/${valId}/lastVoted`);
-            return Math.round(100 * (totalVotes / (data.network.block_height - firstBlock)));
-        })();   
+        // calculate uptime percent for this validator, this block
+        const uptimePercent = Math.floor(100 * (totalVotes / ((data.network.block_height - firstBlock))));
         
-        console.log(uptimePercent);
+        // assign values (raw and computed) to validator object
+        validator["public_key"] = publicKey;
+        validator["stake"] = stake;
+        validator["uptime_percent"] = uptimePercent;
+        validator["first_block"] = firstBlock;
+        validator["last_voted"] = lastVoted;
+        validator["power"] = power;
+        
+        // @todo update
+        validator["reward"] = 0; // temporary
+
+        // append this validator to validator array
+        validators.push(validator);
     }
+    
+    // set validator array
+    data.validators = validators;
 
     // update clients with new data
     if (height && time) {
