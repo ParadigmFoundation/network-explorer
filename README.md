@@ -11,50 +11,50 @@ The primary usage of this tool is the WebSocket API that push various blockchain
 Structure of the stringified object streamed to each connection, updated upon each new block. 
 
 ```js
-// js-flavored JSON shown with annotations
+// js-flavored JSON with annotations (see below) 
 
 {
     "token": {
-        "total_supply": "11111111", // 1                   
-        "price": 0                  // 2
+        "total_supply": "111111111",        // 1
+        "price": "0"                        // 2
     },
-    "bandwidth": {      
-        "total_limit": 75000,               // 3
-        "total_orders": 1210351,            // 4
-        "remaining_limit": 73125,           // 5
-        "number_posters": 1514,             // 6
-        "sec_to_next_period": 60,           // 7
-        "period_end_eth_block": 5230844,    // 8
-        "current_eth_block": 5230840        // 9
-        "rebalance_period_number": 27940,   // 10
+    "bandwidth": {
+        "total_limit": "75000",             // 3
+        "total_orders": "1210351",          // 4
+        "remaining_limit": "73125",         // 5
+        "number_posters": "1514",           // 6
+        "sec_to_next_period": "60",         // 7
+        "current_eth_block": "5230840",     // 8
+        "period_end_eth_block": "5230844",  // 9
+        "rebalance_period_number": "27940"  // 10
     },
     "network": {
-        "block_height": 1327413,                // 11
-        "last_block_time": 1551727994832,       // 12
-        "avg_block_interval": 1492,             // 13
-        "number_validators": 32,                // 14
-        "total_validator_stake": 65314806500000 // 15
+        "block_height": "1327413",                  // 11     
+        "last_block_time": "1551727994832",         // 12
+        "avg_block_interval": "1492",               // 13
+        "number_validators": "32",                  // 14
+        "total_validator_stake": "65314806500000"   // 15
     },
-    "transactions": [                       // 16
+    "transactions": [                   // 16
         // ...
         {   
-            "order_id": "askdasd",          // 16 (a)     
-            "poster_address": "0x....",     // 16 (b)
-            "maker_address": "0x...",       // 16 (c)
-            "order_type": "0x"              // 16 (d)
+            "order_id": "...",          // 16 (a)
+            "poster_address": "0x....", // 16 (b)
+            "maker_address": "0x...",   // 16 (c)
+            "order_type": "0x"          // 16 (d)
         }
         // ...
     ],
-    "validators": [                 // 17
+    "validators": [                     // 17 
         // ...
         {
-            "public_key": "...",    // 17 (a)
-            "stake": 1345600000000, // 17 (b)
-            "reward": 1200000000,   // 17 (c)
-            "uptime_percent": 11,   // 17 (d)
-            "first_block": 45102,   // 17 (e)
-            "last_voted": 1327413   // 17 (f)
-            "power": 10             // 17 (g)
+            "public_key": "...",        // 17 (a)
+            "stake": "1345600000000",   // 17 (b)
+            "reward": "1200000000",     // 17 (c)
+            "uptime_percent": "11",     // 17 (d)
+            "first_block": "45102",     // 17 (e)
+            "last_voted": "1327413",    // 17 (f)
+            "power":"10"
         }
         // ...
     ]
@@ -62,6 +62,8 @@ Structure of the stringified object streamed to each connection, updated upon ea
 ```
 
 ### Annotations
+
+_*Note: All values are strings (double-quoted) in the JSON sent to the client with each new block.*_ Convert to JS `number` type where necessary.
 
 1. **DIGM token supply** (`token.total_supply`): the total number of DIGM tokens in circulation. Keep in mind this number will be in units of `wei` (smallest divisible unit) so for the actual "quantity" of full DIGM tokens, this value will need to be multiplied by `1 * 10^18`.
 
@@ -77,9 +79,9 @@ Structure of the stringified object streamed to each connection, updated upon ea
 
 1. **Seconds to next period** (`bandwidth.sec_to_next_period`): a (very) rough estimation of the number of seconds to the next rebalance period. Taken by counting the number of Ethereum blocks until the next period, multiplied by the average Ethereum block-time.
 
-1. **Period end Ethereum block** (`bandwidth.period_end_eth_block`): the Ethereum block number at which the current rebalance period ends.
-
 1. **Current Ethereum block** (`bandwidth.current_eth_block`): the best-known (highest) Ethereum block number. Updated each time an OrderStream block is committed.
+
+1. **Period end Ethereum block** (`bandwidth.period_end_eth_block`): the Ethereum block number at which the current rebalance period ends.
 
 1. **Rebalance period number** (`bandwidth.rebalance_period_number`): an incremental counter that tracks the number of rebalance periods that have occurred. Displays the number of the currently active period (not the last completed).
 

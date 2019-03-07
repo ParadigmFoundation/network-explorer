@@ -1,55 +1,42 @@
 {
     "token": {
         "total_supply": "111111111",
-        "price": 0
+        "price": "0"                        
     },
     "bandwidth": {
-        "total_limit": 75000,
-        "total_orders": 1210351,
-        "remaining_limit": 73125,
-        "number_posters": 1514,
-        "sec_to_next_period": 60,
-        "rebalance_period_number": 27940,
-        "period_end_eth_block": 5230844,
-        "current_eth_block": 5230840
+        "total_limit": "75000",     
+        "total_orders": "1210351",        
+        "remaining_limit": "73125",    
+        "number_posters": "1514",       
+        "sec_to_next_period": "60",     
+        "current_eth_block": "5230840",   
+        "period_end_eth_block": "5230844",
+        "rebalance_period_number": "27940"
     },
     "network": {
-        "block_height": 1327413,
-        "last_block_time": 1551727994832,
-        "avg_block_interval": 1492,
-        "number_validators": 32,
-        "total_validator_stake": 6531480650000000000
+        "block_height": "1327413",                 
+        "last_block_time": "1551727994832",    
+        "avg_block_interval": "1492",               
+        "number_validators": "32",                  
+        "total_validator_stake": "65314806500000"   
     },
-    "transactions": [
-        {
-            "order_id": "askdasd",
+    "transactions": [                  
+        {   
+            "order_id": "...",  
             "poster_address": "0x....",
-            "maker_address": "0x...",
-            "order_type": "0x"
-        },
-        {
-            "order_id": "kljadslkj",
-            "poster_address": "0x....",
-            "maker_address": "0x...",
-            "order_type": "Dharma"
+            "maker_address": "0x...", 
+            "order_type": "0x"  
         }
     ],
-    "validators": [
+    "validators": [ 
         {
-            "moniker": "bs1",
-            "stake": 1345600000000,
-            "reward": 1200000000,
-            "uptime_percent": 11,
-            "first_block": 45102,
-            "last_voted": 1327413
-        },
-        {
-            "moniker": "bs2",
-            "stake": 789600000000,
-            "reward": -16300000000,
-            "uptime_percent": 100,
-            "first_block": 0,
-            "last_voted": 1327413
+            "public_key": "...",     
+            "stake": "1345600000000",  
+            "reward": "1200000000",     
+            "uptime_percent": "11",    
+            "first_block": "45102",    
+            "last_voted": "1327413", 
+            "power":"10"
         }
     ]
 }
