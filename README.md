@@ -11,11 +11,22 @@ _WebSocket API usage subject to change._
 
 The `network-summary-api` server is designed to be as simple as possible. The application exposes a WebSocket server on a port defined by the `PORT` environment variable. 
 
-When a client connects to the server, **the server immediately starts pushing API data to the client with a format [described here](#api-schema).** This is refereed to as the **subscription** at points in this document.
+When a client connects to the server, **the server immediately starts pushing API data to the client with a format [described here](#api-schema)** (after sending a [one-tme connection message](#connection-message) with a `subscriptionId`). This is refereed to as the **subscription** at points in this document.
 
 The server also allows two types of request/response methods for accessing users token balances and rate limits. These requests ([described here](#request-format)) should be sent over the same WebSocket connection as the subscription, and should use a unique client-generated `id` string. The client-provided `id` will be returned with successful request responses (along with a 0 OK code) so the client listen for the correct response message, and filter it from the stream of subscription messages.
 
 In the future, the subscription may need to be initiated with a client request.
+
+### Connection message
+
+Upon successful connection to the server, the server pushes a one-time "connection" message, with the subscription ID included in all future subscription messages. Keep in mind this subscription ID should be used to filter subscription messages from request-response messages.
+
+```js
+// => sent to client (immediately upon successful connect)
+{
+    "message": "18706ca5-a7d7-4781-b027-acf6c52c2cc6"
+}
+```
 
 ### Request format
 
@@ -267,3 +278,10 @@ _*Note: All values are strings (double-quoted) in the JSON sent to the client wi
     f. **Last voted** (`validators[N].last_voted`): the height of OrderStream network at which a given validator voted (or proposed) a block.
 
     g. **Vote power** (`validators[N].power`): the vote power the validator has on the Tendermint chain. Also affects how often a given validator is selected as block proposer.
+
+# Notes
+
+- Values should be cached by the client (or stored in the DOM) and only updated when necessary
+- Error messages will not have an `id` field
+- Error messages send as responses to requests will have a `code` set to `0`
+- Reach out to `henry@paradigm.market` with API difficulties
