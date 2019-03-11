@@ -283,6 +283,34 @@ _*Note: All values are strings (double-quoted) in the JSON sent to the client wi
 
     g. **Vote power** (`data.validators[N].power`): the vote power the validator has on the Tendermint chain. Also affects how often a given validator is selected as block proposer.
 
+# Develop
+
+The actual `server` implementation is a WIP. To run for development purposes, set the following environment variables:
+
+```bash
+# tcp port to bind ws server to
+PORT=
+
+# order stream JSONRPC url to source data from
+ORDERSTREAM_NODE_URL=""
+
+# number of blocks to average block interval over
+AVERAGE_OVER=50
+
+# web3 provider URL (to support Ethereum queries)
+WEB3_URL=""
+```
+
+1. Clone with `git clone git@github.com:ParadigmFoundation/network-explorer`
+
+1. Set environment vars described above (or place in `.env` file)
+
+1. Build with `yarn build`
+
+1. Start with `yarn start`
+
+_A hosted version of this server will be deployed soon, and its URL included here._
+
 # Notes
 
 - Values should be cached by the client (or stored in the DOM) and only updated when necessary
