@@ -44,3 +44,15 @@ interface IValidator {
 interface Constructable<T> {
     new(): T;
 }
+
+interface IWsRequest {
+    id: string;
+    method: string;
+    param: string;
+}
+
+interface IWsResponse {
+    id: string;
+    code: number;
+    data?: string;
+}

@@ -48,12 +48,15 @@ const data: INetworkData = {
 
 // basic setup
 // const paradigm = new Paradigm()
-const clients: { [key: string]: ws } = {};
+const clients: {
+    [key: string]: {
+        client: ws,
+        id: string
+    }
+} = {};
+
 const lastBlockTimes: Array<number> = [];
 let lastTime: number = null;
-
-// emitter for synchronizing
-const ee = new EventEmitter();
 
 // setup WS server
 const server = new Server({
@@ -62,14 +65,15 @@ const server = new Server({
 
 // setup web3 connection
 // setup paradigm connection
-const paradigm = new Paradigm();
 const web3 = new newWeb3(WEB3_URL);
+const paradigm = new Paradigm();
 
 // setup connection to orderstream
-const orderStreamWs = new ws(ORDERSTREAM_NODE_URL);
+const osSubscription = new ws(ORDERSTREAM_NODE_URL);
+const osQuery = new ws(ORDERSTREAM_NODE_URL);
 const orderStreamId = uuid();
 
-orderStreamWs.onmessage = async (msg) => {
+osSubscription.onmessage = async (msg) => {
     // will store this block's diff
     let diff;
 
@@ -101,7 +105,8 @@ orderStreamWs.onmessage = async (msg) => {
     data.network.last_block_time = time;
     data.network.avg_block_interval = calculateAverageBlockTime(lastBlockTimes);
     data.network.number_validators = await (async () => {
-        const valListStr = await queryState(orderStreamWs, "validators")
+        const valListStr = await queryState(osQuery, "validators")
+        if (!valListStr) return "?";
         const valListArr = valListStr.slice(1, -1).split(",");
         validatorIds = valListArr;
         return valListArr.length;
@@ -113,21 +118,24 @@ orderStreamWs.onmessage = async (msg) => {
     data.token.price = 0; // @todo consider
 
     // find and update `bandwidth` values
-    data.bandwidth.total_limit = parseInt(await queryState(orderStreamWs, "round/limit"));
-    data.bandwidth.total_orders = await queryState(orderStreamWs, "orderCounter");
+    data.bandwidth.total_limit = parseInt(await queryState(osQuery, "round/limit"));
+    data.bandwidth.total_orders = await queryState(osQuery, "orderCounter");
     data.bandwidth.remaining_limit = await (async () => {
-        const used = parseInt(await queryState(orderStreamWs, "round/limitUsed"));
+        const used = parseInt(await queryState(osQuery, "round/limitUsed"));
+        if (!used) return null;
         const remaining = data.bandwidth.total_limit - used;
         return remaining;
     })();
     data.bandwidth.number_posters = await (async () => {
-        const posterListStr = await queryState(orderStreamWs, "posters")
+        const posterListStr = await queryState(osQuery, "posters");
+        if (!posterListStr) return null;
         const posterListArr = posterListStr.slice(1, -1).split(",");
         return posterListArr.length;
     })();
     data.bandwidth.sec_to_next_period = await (async () => {
         const currentBlock = await web3.eth.getBlockNumber();
-        const endingBlock = parseInt(await queryState(orderStreamWs, "round/endsAt"));
+        const endingBlock = parseInt(await queryState(osQuery, "round/endsAt"));
+        if (!endingBlock) return null;
         const rawDiff = endingBlock - currentBlock;
         const time = (rawDiff * 15) + 15;
 
@@ -136,38 +144,45 @@ orderStreamWs.onmessage = async (msg) => {
         data.bandwidth.period_end_eth_block = endingBlock;
         return time > 0 ? time : 0;
     })();
-    data.bandwidth.rebalance_period_number = await queryState(orderStreamWs, "round/number");
+    data.bandwidth.rebalance_period_number = await queryState(osQuery, "round/number");
 
-    // get validator info
-    for (let i = 0; i < validatorIds.length; i++) {
-        // setup validator
-        const validator = {};
-        const valId = validatorIds[i];
+    // safety
+    if (!validatorIds) {
+        console.log("skipping validator info");
+    } else {
+        data.validators = [];
 
-        // make necessary queries to local node's state
-        const totalVotes = parseInt(await queryState(orderStreamWs, `validators/${valId}/totalVotes`));
-        const firstBlock = parseInt(await queryState(orderStreamWs, `validators/${valId}/firstVote`));
-        const lastVoted = parseInt(await queryState(orderStreamWs, `validators/${valId}/lastVoted`));
-        const publicKey = await queryState(orderStreamWs, `validators/${valId}/publicKey`);
-        const stake = await queryState(orderStreamWs, `validators/${valId}/balance`);
-        const power = await queryState(orderStreamWs, `validators/${valId}/power`);
+        // get validator info
+        for (let i = 0; i < validatorIds.length; i++) {
+            // setup validator
+            const validator = {};
+            const valId = validatorIds[i];
 
-        // calculate uptime percent for this validator, this block
-        const uptimePercent = Math.floor(100 * (totalVotes / ((data.network.block_height - firstBlock))));
-        
-        // assign values (raw and computed) to validator object
-        validator["public_key"] = publicKey;
-        validator["stake"] = stake;
-        validator["uptime_percent"] = uptimePercent;
-        validator["first_block"] = firstBlock;
-        validator["last_voted"] = lastVoted;
-        validator["power"] = power;
-        
-        // @todo update
-        validator["reward"] = 0; // temporary
+            // make necessary queries to local node's state
+            const totalVotes = parseInt(await queryState(osQuery, `validators/${valId}/totalVotes`));
+            const firstBlock = parseInt(await queryState(osQuery, `validators/${valId}/firstVote`));
+            const lastVoted = parseInt(await queryState(osQuery, `validators/${valId}/lastVoted`));
+            const publicKey = await queryState(osQuery, `validators/${valId}/publicKey`);
+            const stake = await queryState(osQuery, `validators/${valId}/balance`);
+            const power = await queryState(osQuery, `validators/${valId}/power`);
 
-        // append this validator to validator array
-        validators.push(validator);
+            // calculate uptime percent for this validator, this block
+            const uptimePercent = Math.floor(100 * (totalVotes / ((data.network.block_height - firstBlock))));
+            
+            // assign values (raw and computed) to validator object
+            validator["public_key"] = publicKey;
+            validator["stake"] = stake;
+            validator["uptime_percent"] = uptimePercent;
+            validator["first_block"] = firstBlock;
+            validator["last_voted"] = lastVoted;
+            validator["power"] = power;
+            
+            // @todo update
+            validator["reward"] = 0; // temporary
+
+            // append this validator to validator array
+            validators.push(validator);
+        }
     }
     
     // set validator array
@@ -175,19 +190,27 @@ orderStreamWs.onmessage = async (msg) => {
 
     // update clients with new data
     if (height && time) {
-        Object.keys(clients).forEach((id) => {
-            const client = clients[id];
+        Object.keys(clients).forEach((serverId) => {
+            const { client, id } = clients[serverId];
             if (client.readyState !== client.OPEN) {
                 return;
             }
-            client.send(JSON.stringify(data));
+            client.send(JSON.stringify({id, data}));
         })
     }
 }
 
+osSubscription.onerror = (msg) => {
+    console.log(`!!! Caught Subscription Error: ${msg.error}`);
+}
+
+osQuery.onerror = (msg) => {
+    console.log(`!!! Caught Query Error: ${msg.error}`);
+}
+
 // subscribe to paradigmcore JSONRPC 
-orderStreamWs.onopen = () => {
-    orderStreamWs.send(JSON.stringify({
+osSubscription.onopen = () => {
+    osSubscription.send(JSON.stringify({
         jsonrpc: "2.0",
         id: orderStreamId,
         method: "subscription.start",
@@ -203,11 +226,55 @@ orderStreamWs.onopen = () => {
 
 // handle client connection
 server.on("connection", (socket, request) => {
-    const clientId = uuid();
-    clients[clientId] = socket;
+    const subId = uuid();
+    const serverId = uuid();
+    clients[serverId] = {
+        client: socket,
+        id: subId
+    }
+    socket.send(JSON.stringify({ message: subId }));
     socket.onclose = () => {
         console.log("deleting client on disconnect");
-        delete clients[clientId];
+        delete clients[serverId];
+    }
+    socket.onmessage = async (msg) => {
+        let parsed: IWsRequest;
+        let res: IWsResponse = { id: null, code: 1 };
+        try {
+            parsed = JSON.parse(msg.data.toString());
+        } catch {
+            res.data = `bad request: failed to parse`;
+            socket.send(JSON.stringify(res));
+            return;
+        }
+        const { id, method, param } = parsed;
+        if (!id || !method || !param) {
+            res.data = `missing required parameters`;
+        } else if (!/(balance|limit)/.test(method)){
+            res.data = `invalid method: '${method}'`;
+        } else if (!/^0x[a-fA-F0-9]{40}$/.test(param)) {
+            res.data = `invalid poster address`;
+        } else {
+            let resp;
+            if (method === "balance") {
+                const raw = await paradigm.digmToken.balanceOf(param);
+                resp = raw.toString();
+            } else if (method === "limit") {
+                const path = `posters/${param.toLowerCase()}/limit`;
+                resp = await queryState(osQuery, path);
+            }
+            if (resp) {
+                res.data = resp;
+                res.code = 0;
+                res.id = id;
+            } else {
+                res.data = "node reported failed query, might have no balance";
+            }
+        }
+        socket.send(JSON.stringify(res));
+    }
+    socket.onerror = (e) => {
+        console.log(`error w/ connection '${serverId}': ${e.message}`);
     }
 });
 

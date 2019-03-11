@@ -1,4 +1,5 @@
 import * as uuid from "uuid/v4";
+import * as WebSocket from "ws";
 
 export function calculateAverageBlockTime(diffs: number[]): number {
     let average, length, sum = 0;
@@ -22,7 +23,7 @@ export function addBlockTime(blockTimes: number[], blockTime: number, limit: num
     }
 }
 
-export function queryState(ws, path): Promise<any> {
+export function queryState(ws: WebSocket, path): Promise<any> {
     return new Promise((resolve, reject) => {
         const reqid = uuid();
         ws.send(JSON.stringify({
@@ -31,13 +32,18 @@ export function queryState(ws, path): Promise<any> {
             method: "state.query",
             params: { path }
         }));
+        const timer = setTimeout(() => {
+            ws.off("message", handler);
+            reject(`timeout: failed query: "${path}"`);
+        }, 3000);
         const handler = (msg) => {
             const parsed = JSON.parse(msg.toString());
             if (parsed.id === reqid) {
-                resolve(parsed.result.response.info);
                 ws.off("message", handler);
+                clearInterval(timer);
+                resolve(parsed.result.response.info);
             }
         };
-        ws.on("message", handler)
-    });
+        ws.on("message", handler);
+    }).catch(console.log);
 }

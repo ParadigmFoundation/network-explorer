@@ -6,58 +6,205 @@ The network summary API provides a simple WebSocket subscription for various sta
 
 The primary usage of this tool is the WebSocket API that push various blockchain and network data over a client <> server connection for each connected party. The schematic of the output object is shown and described below.
 
+## Usage
+_WebSocket API usage subject to change._
+
+The `network-summary-api` server is designed to be as simple as possible. The application exposes a WebSocket server on a port defined by the `PORT` environment variable. 
+
+When a client connects to the server, **the server immediately starts pushing API data to the client with a format [described here](#api-schema).** This is refereed to as the **subscription** at points in this document.
+
+The server also allows two types of request/response methods for accessing users token balances and rate limits. These requests ([described here](#request-format)) should be sent over the same WebSocket connection as the subscription, and should use a unique client-generated `id` string. The client-provided `id` will be returned with successful request responses (along with a 0 OK code) so the client listen for the correct response message, and filter it from the stream of subscription messages.
+
+In the future, the subscription may need to be initiated with a client request.
+
+### Request format
+
+The server accepts two query methods: `balance` and `limit`. These methods can be used by the browser client to request data about a users account via their Ethereum address (loaded via MetaMask on the front-end).
+
+Use the same socket connection as the subscription to send messages of the following format: 
+
+```js
+/* === BALANCE REQUEST/RESPONSE EXAMPLE ===*/
+
+// <= sent to server 
+{
+    "id": "any-client-provided-string",
+    "method": "balance",
+    "param": "0x8b366a3d4e46ac5406f12766ad33e6482ce4f081"
+}
+
+// => sent to client
+{
+    "id": "any-client-provided-string",
+    "code": 0,
+    "data": "108691111111111111111"
+}
+
+/* === LIMIT REQUEST/RESPONSE EXAMPLE ===*/
+
+// <= sent to server 
+{
+    "id": "myId",
+    "method": "limit",
+    "param": "0x8b366a3d4e46ac5406f12766ad33e6482ce4f081"
+}
+
+// => sent to client
+{
+    "id": "myId",
+    "code": 0,
+    "data": "74891"
+}
+
+/* === BAD REQUEST/RESPONSE EXAMPLE ===*/
+
+// <= sent to server (malformed request)
+{
+    "id": "myId",
+    "method": "limit"
+}
+
+// => sent to client (error response example)
+{
+    "id": null,
+    "code": 1,
+    "data": "missing required parameters"
+}	
+```
+
+For the user's `coinbase` (Ethereum address, pulled via MetaMask injection), two requests will need to be made, exactly like the `balance` and `limit` examples above.
+
+The `limit` method returns an integer that will be rendered in the `"Your Bandwidth Limit"` box on the front-end (see [design mockup](./mockup.png)) representing the number of orders a user may post in a given period.
+
+The `balance` method returns the number of DIGM tokens a user has (unlocked, un-staked) in their wallet (Ethereum address). It will return a value in the smallest unit of DIGM (a `wei` = 1*10^-18 DIGM) so a conversion will need to be made (multiply by `1*10^18`). For more info, Google "wei to ether conversion".
+
+The balance should be rendered in the top-right corner of the screen (see mockup) if present, or show 0 for a user with no balance. 
+
+### Browser example
+
+Very simple example that demonstrates connection and parsing various messages. Primarily useful to demonstrate boolean conditions for various parsed message structures. 
+
+```js
+const ws = new WebSocket("wss://network-api.paradigm.market/");
+
+// will be sent upon connect as `message`, and in each subscription as `id`
+let subId;
+
+ws.onopen = () => {
+    ws.onmessage = (msg) => {
+        const data = msg.data.toString();
+        const parsed = JSON.parse(data);
+        const { id, code, data, message } = parsed;
+
+        /*
+         in this case, this is the first message and the server is telling
+         us our subscription id
+        */
+        if (message) {
+            // store our subId for future use
+            subId = message.toString();
+            
+        // in this case, `data` is subscription data (see below)
+        } else if (subId && id === subId && data) {
+            // handle subscription data here
+
+        // in this case, the server has encountered an error processing a subscription
+        } else if (subId && id === subId && !data) {
+            // ignore this message and don't update displayed data
+        
+        // in this case `data` is an OK response to a client request
+        } else if (subId && id !== subId && data && code === 0) {
+            // handle server response message here
+            // the `id` field will be the same `id` that was included in the request
+
+        /*
+         in this case, an error was encountered processing a client request
+         and the method has failed.
+        */
+        } else if (subId && !id && data && code === 1) {
+           // the `data` field may contain error information
+        
+        // unexpected unknown case
+        } else {
+            // ignore?
+        }
+    }
+}
+```
+
 ### API Schema
 
 Structure of the stringified object streamed to each connection, updated upon each new block. 
+
+_**Note:** every value (except for parent objects) is sent as a string, so conversions must be made client-side. Keep in mind overflows/loss-of-precision when dealing with token balances._
 
 ```js
 // js-flavored JSON with annotations (see below) 
 
 {
-    "token": {
-        "total_supply": "111111111",        // 1
-        "price": "0"                        // 2
-    },
-    "bandwidth": {
-        "total_limit": "75000",             // 3
-        "total_orders": "1210351",          // 4
-        "remaining_limit": "73125",         // 5
-        "number_posters": "1514",           // 6
-        "sec_to_next_period": "60",         // 7
-        "current_eth_block": "5230840",     // 8
-        "period_end_eth_block": "5230844",  // 9
-        "rebalance_period_number": "27940"  // 10
-    },
-    "network": {
-        "block_height": "1327413",                  // 11     
-        "last_block_time": "1551727994832",         // 12
-        "avg_block_interval": "1492",               // 13
-        "number_validators": "32",                  // 14
-        "total_validator_stake": "65314806500000"   // 15
-    },
-    "transactions": [                   // 16
-        // ...
-        {   
-            "order_id": "...",          // 16 (a)
-            "poster_address": "0x....", // 16 (b)
-            "maker_address": "0x...",   // 16 (c)
-            "order_type": "0x"          // 16 (d)
-        }
-        // ...
-    ],
-    "validators": [                     // 17 
-        // ...
-        {
-            "public_key": "...",        // 17 (a)
-            "stake": "1345600000000",   // 17 (b)
-            "reward": "1200000000",     // 17 (c)
-            "uptime_percent": "11",     // 17 (d)
-            "first_block": "45102",     // 17 (e)
-            "last_voted": "1327413",    // 17 (f)
-            "power":"10"
-        }
-        // ...
-    ]
+    /* 
+     A unique `ID` string is provided by the server when a client connection is
+     initiated. It can be used to filter subscription messages (like these) from
+     request/response messages used to query a users address (from MetaMask) for
+     their token balances and OS rate limits.
+    */
+
+    "id": "18706ca5-a7d7-4781-b027-acf6c52c2cc6",
+    
+    /*
+     The data object contains all API data. Mostly, each field is updated every
+     block, even if the data does not change. If the server encounters an error
+     with a particular query, it will omit that field, so the client should 
+     keep a cache and not over-write displayed values with `null` or `undefined`
+     even if that is the value returned by the API. This will be fixed in future
+     server versions.
+    */
+    "data": {
+        "token": {
+            "total_supply": "111111111",        // 1
+            "price": "0"                        // 2
+        },
+        "bandwidth": {
+            "total_limit": "75000",             // 3
+            "total_orders": "1210351",          // 4
+            "remaining_limit": "73125",         // 5
+            "number_posters": "1514",           // 6
+            "sec_to_next_period": "60",         // 7
+            "current_eth_block": "5230840",     // 8
+            "period_end_eth_block": "5230844",  // 9
+            "rebalance_period_number": "27940"  // 10
+        },
+        "network": {
+            "block_height": "1327413",                  // 11     
+            "last_block_time": "1551727994832",         // 12
+            "avg_block_interval": "1492",               // 13
+            "number_validators": "32",                  // 14
+            "total_validator_stake": "65314806500000"   // 15
+        },
+        "transactions": [                   // 16
+            // ...
+            {   
+                "order_id": "...",          // 16 (a)
+                "poster_address": "0x....", // 16 (b)
+                "maker_address": "0x...",   // 16 (c)
+                "order_type": "0x"          // 16 (d)
+            }
+            // ...
+        ],
+        "validators": [                     // 17 
+            // ...
+            {
+                "public_key": "...",        // 17 (a)
+                "stake": "1345600000000",   // 17 (b)
+                "reward": "1200000000",     // 17 (c)
+                "uptime_percent": "11",     // 17 (d)
+                "first_block": "45102",     // 17 (e)
+                "last_voted": "1327413",    // 17 (f)
+                "power":"10"
+            }
+            // ...
+        ]
+    }
 }
 ```
 
@@ -120,7 +267,3 @@ _*Note: All values are strings (double-quoted) in the JSON sent to the client wi
     f. **Last voted** (`validators[N].last_voted`): the height of OrderStream network at which a given validator voted (or proposed) a block.
 
     g. **Vote power** (`validators[N].power`): the vote power the validator has on the Tendermint chain. Also affects how often a given validator is selected as block proposer.
-
-## Usage
-
-API usage coming soon...
