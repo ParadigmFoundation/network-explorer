@@ -11,7 +11,7 @@ _WebSocket API usage subject to change._
 
 The `network-summary-api` server is designed to be as simple as possible. The application exposes a WebSocket server on a port defined by the `PORT` environment variable. 
 
-When a client connects to the server, **the server immediately starts pushing API data to the client with a format [described here](#api-schema)** (after sending a [one-tme connection message](#connection-message) with a `subscriptionId`). This is refereed to as the **subscription** at points in this document.
+When a client connects to the server, **the server immediately starts pushing API data to the client with a format [described here](#api-schema)** (after sending a [one-tme connection message](#connection-message) with a `subscriptionId`). This is referred to as the **subscription** at points in this document.
 
 The server also allows two types of request/response methods for accessing users token balances and rate limits. These requests ([described here](#request-format)) should be sent over the same WebSocket connection as the subscription, and should use a unique client-generated `id` string. The client-provided `id` will be returned with successful request responses (along with a 0 OK code) so the client listen for the correct response message, and filter it from the stream of subscription messages.
 
@@ -71,11 +71,11 @@ Use the same socket connection as the subscription to send messages of the follo
 
 // <= sent to server (malformed request)
 {
-    "id": "myId",
+    "id": "anyId",
     "method": "limit"
 }
 
-// => sent to client (error response example)
+// => sent to client (error response example, no id)
 {
     "id": null,
     "code": 1,
@@ -194,28 +194,29 @@ _**Note:** every value (except for parent objects) is sent as a string, so conve
             "last_block_time": "1551727994832",         // 12
             "avg_block_interval": "1492",               // 13
             "number_validators": "32",                  // 14
-            "total_validator_stake": "65314806500000"   // 15
+            "total_validator_stake": "65314806500000",  // 15
+            "total_poster_stake": "421806500030"        // 16
         },
-        "transactions": [                   // 16
+        "transactions": [                   // 17
             // ...
             {   
-                "order_id": "...",          // 16 (a)
-                "poster_address": "0x....", // 16 (b)
-                "maker_address": "0x...",   // 16 (c)
-                "order_type": "0x"          // 16 (d)
+                "order_id": "...",          // 17 (a)
+                "poster_address": "0x....", // 17 (b)
+                "maker_address": "0x...",   // 17 (c)
+                "order_type": "0x"          // 17 (d)
             }
             // ...
         ],
-        "validators": [                     // 17 
+        "validators": [                     // 18 
             // ...
             {
-                "public_key": "...",        // 17 (a)
-                "stake": "1345600000000",   // 17 (b)
-                "reward": "1200000000",     // 17 (c)
-                "uptime_percent": "11",     // 17 (d)
-                "first_block": "45102",     // 17 (e)
-                "last_voted": "1327413",    // 17 (f)
-                "power":"10"
+                "public_key": "...",        // 18 (a)
+                "stake": "1345600000000",   // 18 (b)
+                "reward": "1200000000",     // 18 (c)
+                "uptime_percent": "11",     // 18 (d)
+                "first_block": "45102",     // 18 (e)
+                "last_voted": "1327413",    // 18 (f)
+                "power":"10"                // 18 (g)
             }
             // ...
         ]
@@ -255,7 +256,9 @@ _*Note: All values are strings (double-quoted) in the JSON sent to the client wi
 
 1. **Validator counter** (`data.network.number_validators`): simply tracks the number of validators in the active validator set. It will change only when a new validator is added, or a current one is removed via governance processes. 
 
-1. **Total validator stake** (`data.network.total_validator_stake`): the total number of DIGM (in `wei`) staked in the `ValidatorRegistry` contract by active validators. Also an important metric for determining network security and value. 
+1. **Total validator stake** (`data.network.total_validator_stake`): the total number of DIGM (in `wei`) staked in the `ValidatorRegistry` contract by active validators. Also an important metric for determining network security and value.
+
+1. **Total poster stake** (`data.network.total_poster_stake`): the total number of DIGM (in `wei`) staked in the `PosterRegistry` contract by poster accounts.
 
 1. **Transactions** (`data.transactions`): an array of objects (defined below) with some data representing the most recent 20 order transactions from the network.
 

@@ -112,7 +112,8 @@ osSubscription.onmessage = async (msg) => {
         return valListArr.length;
     })();
     data.network.total_validator_stake = 0; // TODO (in ParadigmCore)
-
+    data.network.total_poster_stake = (await paradigm.posterRegistry.tokensContributed()).toString();
+    
     // find and update `token` values
     data.token.total_supply = (await paradigm.digmToken.totalSupply()).toString();
     data.token.price = 0; // @todo consider

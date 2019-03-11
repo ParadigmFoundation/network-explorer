@@ -19,6 +19,7 @@ interface INetworkData {
         avg_block_interval?: number;
         number_validators?: number;
         total_validator_stake?: number;
+        total_poster_stake?: number;
     }
     transactions?: IOrder[];
     validators?: IValidator[];
