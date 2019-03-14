@@ -21,7 +21,6 @@ import * as _ from "lodash";
 import * as Paradigm from "paradigm-connect";
 import Web3 = require('web3');
 import { Server } from "ws";
-import { EventEmitter } from "events";
 
 // local functions
 import { addBlockTime, calculateAverageBlockTime, queryState } from "./functions";
@@ -74,6 +73,9 @@ const osQuery = new ws(ORDERSTREAM_NODE_URL);
 const orderStreamId = uuid();
 
 osSubscription.onmessage = async (msg) => {
+    // skip if no clients 
+    if (Object.keys(clients).length === 0) { return };
+
     // will store this block's diff
     let diff;
 
