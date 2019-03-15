@@ -35,7 +35,7 @@ export function queryState(ws: WebSocket, path): Promise<any> {
         const timer = setTimeout(() => {
             ws.off("message", handler);
             reject(`timeout: failed query: "${path}"`);
-        }, 3000);
+        }, 3500);
         const handler = (msg) => {
             const parsed = JSON.parse(msg.toString());
             if (parsed.id === reqid) {
@@ -45,5 +45,5 @@ export function queryState(ws: WebSocket, path): Promise<any> {
             }
         };
         ws.on("message", handler);
-    }).catch(console.log);
+    }).catch(() => null);
 }

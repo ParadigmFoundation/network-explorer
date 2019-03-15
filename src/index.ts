@@ -1,5 +1,5 @@
 /**
- * @date 1 March 2019
+ * @date 14 March 2019
  * @author Henry Harder
  * 
  * Very sloppy. Cleanup coming soon.
@@ -23,7 +23,8 @@ import Web3 = require('web3');
 import { Server } from "ws";
 
 // local functions
-import { addBlockTime, calculateAverageBlockTime, queryState } from "./functions";
+import { queryState } from "./functions";
+import { CoreData } from "./CoreData";
 
 // avoid compiler errors (grr @web3.js)
 let newWeb3: any = Web3;
@@ -36,15 +37,6 @@ const {
     WEB3_URL
 } = process.env;
 
-// stores network data object
-const data: INetworkData = {
-    token: {},
-    bandwidth: {},
-    network: {},
-    transactions: [],
-    validators: []
-}
-
 // basic setup
 // const paradigm = new Paradigm()
 const clients: {
@@ -53,9 +45,6 @@ const clients: {
         id: string
     }
 } = {};
-
-const lastBlockTimes: Array<number> = [];
-let lastTime: number = null;
 
 // setup WS server
 const server = new Server({
@@ -67,129 +56,30 @@ const server = new Server({
 const web3 = new newWeb3(WEB3_URL);
 const paradigm = new Paradigm();
 
+// data tracker
+let netData: CoreData;
+
 // setup connection to orderstream
 const osSubscription = new ws(ORDERSTREAM_NODE_URL);
 const osQuery = new ws(ORDERSTREAM_NODE_URL);
 const orderStreamId = uuid();
 
 osSubscription.onmessage = async (msg) => {
-    // skip if no clients 
-    if (Object.keys(clients).length === 0) { return };
-
     // will store this block's diff
     let diff;
 
     // pull/parse some values
     const parsed = JSON.parse(msg.data.toString())
     const { height, time } = parsed.result
-    const timeNum = parseInt(time);
 
     // skip if not a bock
-    if (_.isNaN(timeNum)) return;
+    if (_.isNaN(parseInt(time))) return;
 
-    // calculate average block time
-    if (lastBlockTimes.length === 0 && !lastTime) {
-        lastTime = timeNum; 
-        addBlockTime(lastBlockTimes, 0, parseInt(AVERAGE_OVER));
-    } else {
-        diff = timeNum - lastTime;
-        addBlockTime(lastBlockTimes, diff, parseInt(AVERAGE_OVER));
-        lastTime = timeNum;
+    // update block data
+    netData.updateBlockData(height, time);
 
-    }
-
-    // will store validator info
-    let validatorIds: string[];
-    const validators: any[] = [];
-
-    // find and update `network` values 
-    data.network.block_height = height;
-    data.network.last_block_time = time;
-    data.network.avg_block_interval = calculateAverageBlockTime(lastBlockTimes);
-    data.network.number_validators = await (async () => {
-        const valListStr = await queryState(osQuery, "validators")
-        if (!valListStr) return "?";
-        const valListArr = valListStr.slice(1, -1).split(",");
-        validatorIds = valListArr;
-        return valListArr.length;
-    })();
-    data.network.total_validator_stake = 0; // TODO (in ParadigmCore)
-    data.network.total_poster_stake = (await paradigm.posterRegistry.tokensContributed()).toString();
-    
-    // find and update `token` values
-    data.token.total_supply = (await paradigm.digmToken.totalSupply()).toString();
-    data.token.price = 0; // @todo consider
-
-    // find and update `bandwidth` values
-    data.bandwidth.total_limit = parseInt(await queryState(osQuery, "round/limit"));
-    data.bandwidth.total_orders = await queryState(osQuery, "orderCounter");
-    data.bandwidth.remaining_limit = await (async () => {
-        const used = parseInt(await queryState(osQuery, "round/limitUsed"));
-        if (!used) return null;
-        const remaining = data.bandwidth.total_limit - used;
-        return remaining;
-    })();
-    data.bandwidth.number_posters = await (async () => {
-        const posterListStr = await queryState(osQuery, "posters");
-        if (!posterListStr) return null;
-        const posterListArr = posterListStr.slice(1, -1).split(",");
-        return posterListArr.length;
-    })();
-    data.bandwidth.sec_to_next_period = await (async () => {
-        const currentBlock = await web3.eth.getBlockNumber();
-        const endingBlock = parseInt(await queryState(osQuery, "round/endsAt"));
-        if (!endingBlock) return null;
-        const rawDiff = endingBlock - currentBlock;
-        const time = (rawDiff * 15) + 15;
-
-        // set these values while we have them
-        data.bandwidth.current_eth_block = currentBlock;
-        data.bandwidth.period_end_eth_block = endingBlock;
-        return time > 0 ? time : 0;
-    })();
-    data.bandwidth.rebalance_period_number = await queryState(osQuery, "round/number");
-
-    // safety
-    if (!validatorIds) {
-        console.log("skipping validator info");
-    } else {
-        data.validators = [];
-
-        // get validator info
-        for (let i = 0; i < validatorIds.length; i++) {
-            // setup validator
-            const validator = {};
-            const valId = validatorIds[i];
-
-            // make necessary queries to local node's state
-            const totalVotes = parseInt(await queryState(osQuery, `validators/${valId}/totalVotes`));
-            const firstBlock = parseInt(await queryState(osQuery, `validators/${valId}/firstVote`));
-            const lastVoted = parseInt(await queryState(osQuery, `validators/${valId}/lastVoted`));
-            const publicKey = await queryState(osQuery, `validators/${valId}/publicKey`);
-            const stake = await queryState(osQuery, `validators/${valId}/balance`);
-            const power = await queryState(osQuery, `validators/${valId}/power`);
-
-            // calculate uptime percent for this validator, this block
-            const uptimePercent = Math.floor(100 * (totalVotes / ((data.network.block_height - firstBlock))));
-            
-            // assign values (raw and computed) to validator object
-            validator["public_key"] = publicKey;
-            validator["stake"] = stake;
-            validator["uptime_percent"] = uptimePercent;
-            validator["first_block"] = firstBlock;
-            validator["last_voted"] = lastVoted;
-            validator["power"] = power;
-            
-            // @todo update
-            validator["reward"] = 0; // temporary
-
-            // append this validator to validator array
-            validators.push(validator);
-        }
-    }
-    
-    // set validator array
-    data.validators = validators;
+    // skip broadcast if no clients 
+    if (Object.keys(clients).length === 0) { return };
 
     // update clients with new data
     if (height && time) {
@@ -198,7 +88,7 @@ osSubscription.onmessage = async (msg) => {
             if (client.readyState !== client.OPEN) {
                 return;
             }
-            client.send(JSON.stringify({id, data}));
+            client.send(JSON.stringify({id, data: netData.toJSON()}));
         })
     }
 }
@@ -209,6 +99,11 @@ osSubscription.onerror = (msg) => {
 
 osQuery.onerror = (msg) => {
     console.log(`!!! Caught Query Error: ${msg.error}`);
+}
+
+osQuery.onopen = () => {
+    console.log(`Query connection now open.`);
+    netData = new CoreData(osQuery, paradigm, parseInt(AVERAGE_OVER));
 }
 
 // subscribe to paradigmcore JSONRPC 

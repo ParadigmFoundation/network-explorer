@@ -27,6 +27,9 @@ export class QueryValue {
     /** The actual value of the instance */
     private currentValue: any;
 
+    /** An optional function to be called on each updating value. */
+    private cb: (val: any) => any = val => { return val };
+
     /**
      * Create a new `QueryValue` instance.
      * 
@@ -34,13 +37,17 @@ export class QueryValue {
      * @param socket query connection JSONRPC instance
      * @param interval the interval in ms to update with
      */
-    constructor(path: string, socket: WebSocket, interval: number) {
+    constructor(socket: WebSocket, path: string, interval: number, cb?) {
         this.path = path;
         this.socket = socket;
         this.interval = interval;
+        if (cb) {
+            this.cb = cb;
+        }
         if ((this.started = this.start()) !== true) {
             throw new Error("Failed to start query value.");
         };
+        // this.updateValue();
     }
 
     /**
@@ -48,7 +55,15 @@ export class QueryValue {
      */
     private updateValue(): () => void {
         return async () => {
-            this.currentValue = await this.executeQuery();
+            try {
+                const maybePromise = this.cb(await this.executeQuery());
+                if (typeof maybePromise.then === 'function') {
+                    this.currentValue = await maybePromise;
+                } else {
+                    this.currentValue = maybePromise;
+                }
+            } catch {
+            }
         }
     }
 
@@ -95,8 +110,9 @@ export class QueryValue {
             }));
             const timer = setTimeout(() => {
                 this.socket.off("message", handler);
-                reject(`timeout: failed query: "${this.path}"`);
-            }, 3000);
+                console.log(`timeout: failed query: "${this.path}"`);
+                resolve();
+            }, 5000);
             const handler = (msg) => {
                 const parsed = JSON.parse(msg.toString());
                 if (parsed.id === reqid) {
@@ -113,6 +129,6 @@ export class QueryValue {
      * Manually trigger an update to the state value.
      */
     public update(): void {
-        this.updateValue();
+        this.updateValue()();
     }
 }
