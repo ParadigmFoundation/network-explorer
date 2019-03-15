@@ -1,3 +1,5 @@
+// local and remote imports
+import * as c from "ansi-colors";
 import * as uuid from "uuid/v4";
 import * as WebSocket from "ws";
 
@@ -45,5 +47,36 @@ export function queryState(ws: WebSocket, path): Promise<any> {
             }
         };
         ws.on("message", handler);
-    }).catch(() => null);
+    }).catch((err) => {
+        warn(`failed query: ${err}`);
+    });
+}
+
+export function sendWrapper(ws: WebSocket, data: string | Buffer): void {
+    if (ws.readyState === ws.OPEN) {
+        ws.send(data);
+        return;
+    } else {
+        return;
+    }
+}
+
+/**
+ * Creates a pretty timestamp string.
+ */
+export function ts(): string {
+    let dt = new Date().toISOString().split("T");
+    return c.bold.black(`${dt[0]} ${dt[1].split("Z")[0]}`);
+}
+
+export function log(msg: string): void {
+    console.log(`${ts()} ${c.bold.green("info:")} ${msg}`);
+}
+
+export function warn(msg: string): void {
+    console.warn(`${ts()} ${c.bold.yellow("warning:")} ${msg}`);
+}
+
+export function error(msg: string): void {
+    console.error(`${ts()} ${c.bold.red("error:")} ${msg}`);
 }

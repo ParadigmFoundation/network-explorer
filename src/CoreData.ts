@@ -1,7 +1,12 @@
 import { QueryValue } from "./QueryValue";
+import { log, warn, error } from "./functions";
 import { cloneDeep } from "lodash";
 import * as WebSocket from "ws";
 import * as uuid from "uuid/v4"
+
+interface AutoQuery<T> extends QueryValue {
+    is(): T;   
+}
 
 export class CoreData {
     private static tenMinutes = 10 * 60 * 1000;
@@ -153,13 +158,22 @@ export class CoreData {
                 const valId = this.validatorIds[i];
 
                 try {
-                    // make necessary queries to local node's state
-                    const totalVotes = await this.executeQuery(`validators/${valId}/totalVotes`);
-                    const firstBlock = await this.executeQuery(`validators/${valId}/firstVote`);
-                    const lastVoted = await this.executeQuery(`validators/${valId}/lastVoted`);
-                    const publicKey = await this.executeQuery(`validators/${valId}/publicKey`);
-                    const stake = await this.executeQuery(`validators/${valId}/balance`);
-                    const power = await this.executeQuery(`validators/${valId}/power`);
+                    // asynchronously query node's state for following values
+                    const [ 
+                        totalVotes,
+                        firstBlock,
+                        lastVoted,
+                        publicKey,
+                        stake,
+                        power
+                    ] = await Promise.all([
+                        this.executeQuery(`validators/${valId}/totalVotes`),
+                        this.executeQuery(`validators/${valId}/firstVote`),
+                        this.executeQuery(`validators/${valId}/lastVoted`),
+                        this.executeQuery(`validators/${valId}/publicKey`),
+                        this.executeQuery(`validators/${valId}/balance`),
+                        this.executeQuery(`validators/${valId}/power`)
+                    ]);
 
                     // calculate uptime percent for this validator, this block
                     const currHeight = parseInt(this.nBlockHeight);
@@ -179,7 +193,7 @@ export class CoreData {
                     // append this validator to validator array
                     validators.push(validator);
                 } catch {
-                    console.log("failed to update validators");
+                    warn("failed to update validators");
                 }
             }
             this.validators = validators;
@@ -196,7 +210,7 @@ export class CoreData {
             }));
             const timer = setTimeout(() => {
                 this.conn.off("message", handler);
-                console.log(`timeout: failed query: "${path}"`);
+                warn(`query failed due to request timeout for: "${path}"`);
                 resolve();
             }, 5000);
             const handler = (msg) => {
@@ -273,50 +287,4 @@ export class CoreData {
             validators: cloneDeep(this.validators)
         };
     }
-}
-
-interface AutoQuery<T> extends QueryValue {
-    is(): T;   
-}
-
-interface TokenData {
-    total_supply?: number;
-    price?: number;
-}
-
-interface BandwidthData {
-    total_limit?: number;
-    total_orders?: number;
-    remaining_limit?: number;
-    number_posters?: number;
-    sec_to_next_period?: number;
-    rebalance_period_number?: number;
-    period_end_eth_block?: number;
-    current_eth_block?: number;
-}
-
-interface NetworkData {
-    block_height?: number;
-    last_block_time?: number;
-    avg_block_interval?: number;
-    number_validators?: number;
-    total_validator_stake?: number;
-    total_poster_stake?: number;
-}
-
-interface ValidatorData {
-    moniker: string;
-    stake: number;
-    reward: number;
-    uptime_percent: number;
-    first_block: number;
-    last_voted: number;
-}
-
-interface OrderData {
-    order_id: string;
-    poster_address: string;
-    maker_address: string;
-    subcontract_address: string;
-    order_type: string;
 }

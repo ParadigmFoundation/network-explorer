@@ -1,0 +1,18 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '-t',
+      'gcr.io/orderstream-network-explorer/explorer:$SHORT_SHA',
+      './'
+    ]
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'tag',
+      'gcr.io/orderstream-network-explorer/explorer:$SHORT_SHA',
+      'gcr.io/orderstream-network-explorer/explorer:latest'
+    ]
+images: [
+  'gcr.io/orderstream-network-explorer/explorer:$SHORT_SHA',
+  'gcr.io/orderstream-network-explorer/explorer:latest'
+]

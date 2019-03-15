@@ -57,3 +57,11 @@ interface IWsResponse {
     code: number;
     data?: string;
 }
+
+interface OrderData {
+    order_id: string;
+    poster_address: string;
+    maker_address: string;
+    subcontract_address: string;
+    order_type: string;
+}

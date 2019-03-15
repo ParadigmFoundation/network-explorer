@@ -1,6 +1,7 @@
 
 import * as WebSocket from "ws";
 import * as uuid from "uuid/v4"
+import { warn } from "./functions";
 
 /**
  * A self-updating value returned as a result of a query to an OrderStream node's
@@ -110,7 +111,7 @@ export class QueryValue {
             }));
             const timer = setTimeout(() => {
                 this.socket.off("message", handler);
-                console.log(`timeout: failed query: "${this.path}"`);
+                warn(`auto-query failed due to request timeout for: "${this.path}"`);
                 resolve();
             }, 5000);
             const handler = (msg) => {
