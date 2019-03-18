@@ -73,11 +73,10 @@ export function sendWrapper(ws: WebSocket, data: string | Buffer): void {
 export async function parseOrder(paradigm, rawOrder: any): Promise<IOrder> {
     const order: any = {};
     const pOrder = new paradigm.Order(rawOrder);
-    order.maker_address = pOrder.makerAddress;
+    order.maker_address = pOrder.makerValues.makerAddress;
     order.order_id = getHash(pOrder.makerValues);
     order.order_type = "0x";
     order.poster_address = await pOrder.recoverPoster();
-    order.subcontract_address = pOrder.subContract;
     return order as IOrder;
 }
 
