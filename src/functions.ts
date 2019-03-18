@@ -2,6 +2,15 @@
 import * as c from "ansi-colors";
 import * as uuid from "uuid/v4";
 import * as WebSocket from "ws";
+import { orderHashUtils, Order } from "0x.js";
+
+export function getHash(order: Order): string {
+    try {
+        return orderHashUtils.getOrderHashHex(order);
+    } catch (error) {
+        throw new Error("Unable to generate order hash.");
+    }
+}
 
 export function calculateAverageBlockTime(diffs: number[]): number {
     let average, length, sum = 0;
@@ -59,6 +68,17 @@ export function sendWrapper(ws: WebSocket, data: string | Buffer): void {
     } else {
         return;
     }
+}
+
+export async function parseOrder(paradigm, rawOrder: any): Promise<IOrder> {
+    const order: any = {};
+    const pOrder = new paradigm.Order(rawOrder);
+    order.maker_address = pOrder.makerAddress;
+    order.order_id = getHash(pOrder.makerValues);
+    order.order_type = "0x";
+    order.poster_address = await pOrder.recoverPoster();
+    order.subcontract_address = pOrder.subContract;
+    return order as IOrder;
 }
 
 /**

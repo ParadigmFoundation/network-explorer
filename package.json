@@ -1,6 +1,6 @@
 {
   "name": "network-explorer",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A simple API server that provides real-time information about the Paradigm protocol.",
   "main": "index.js",
   "repository": "git@github.com:paradigmfoundation/network-explorer",
@@ -11,6 +11,7 @@
     "start": "node ./dist/index.js"
   },
   "dependencies": {
+    "0x.js": "^6.0.3",
     "@types/lodash": "^4.14.121",
     "@types/redis": "^2.8.11",
     "@types/ws": "^6.0.1",

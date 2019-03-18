@@ -33,18 +33,23 @@ export class DataManager {
 
     // timer set to update validator info 
     private validatorTimer: NodeJS.Timer;
+    private orderAmount: number;
 
     constructor(
         definitions: QueryDefinition,
         socketUrl: string,
         averageOver: number,
-        validatorInterval: number
+        validatorInterval: number,
+        orderAmount: number = 20
     ) {
         this.keys = [];
         this.values = {};
+
         this.validators = [];
+        this.orders = [];
 
         this.averageOver = averageOver;
+        this.orderAmount = orderAmount;
         this.defs = definitions;
 
         this.paradigm = new Paradigm();
@@ -233,6 +238,13 @@ export class DataManager {
         }
     }
 
+    public addOrder(order: any): void {
+        this.orders.push(order);
+        while (this.orders.length > this.orderAmount) {
+            this.orders.shift();
+        }
+    }
+
     private updateAverageBlockTime(): number {
         let average, length, sum = 0;
         length = this.lastBlockTimes.length;
@@ -285,7 +297,7 @@ export class DataManager {
             this.getValue("network/total_poster_stake"),
             this.getValue("network/total_validator_stake")
         ]);
-        const latest: INetworkData = {
+        this.values = {
             token: { total_supply, price },
             bandwidth: {
                 total_limit,
@@ -305,9 +317,9 @@ export class DataManager {
                 total_poster_stake,
                 total_validator_stake
             },
-            validators: this.validators
+            validators: cloneDeep(this.validators),
+            transactions: cloneDeep(this.orders)
         }
-        this.values = latest;
     }
 
     public getLatest(key?: string): any {

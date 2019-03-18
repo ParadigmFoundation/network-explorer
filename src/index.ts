@@ -21,12 +21,18 @@ import * as Paradigm from "paradigm-connect";
 import { Server } from "ws";
 
 // local functions
-import { queryState, sendWrapper, log, warn, error } from "./functions";
+import { queryState, sendWrapper, log, warn, error, parseOrder } from "./functions";
 import { DataManager } from "./DataManager";
 import { fields as defs } from "./paths";
 
 // destructure config
-const { ORDERSTREAM_NODE_URL, PORT, AVERAGE_OVER, VALIDATOR_INTERVAL } = process.env;
+const {
+    ORDERSTREAM_NODE_URL,
+    PORT,
+    AVERAGE_OVER,
+    VALIDATOR_INTERVAL,
+    ORDER_NUMBER
+} = process.env;
 
 // local interface definition (requires import type)
 interface IClientMap {
@@ -50,10 +56,12 @@ const paradigm = new Paradigm();
 
 // generate connection id
 const orderStreamId = uuid();
+const ordersId = uuid();
 
 // setup connections to orderstream node
 const osSubscription = new ws(ORDERSTREAM_NODE_URL);
 const osQuery = new ws(ORDERSTREAM_NODE_URL);
+const osOrders = new ws(ORDERSTREAM_NODE_URL);
 
 osSubscription.onmessage = async (msg) => {
     // pull/parse some values
@@ -105,7 +113,39 @@ osQuery.onopen = () => {
         defs,
         ORDERSTREAM_NODE_URL,
         parseInt(AVERAGE_OVER),
-        parseInt(VALIDATOR_INTERVAL));
+        parseInt(VALIDATOR_INTERVAL),
+        parseInt(ORDER_NUMBER));
+}
+
+osOrders.onerror = (msg) => {
+    error(`caught error in orders connection: ${msg.error}`);
+}
+
+osOrders.onopen = () => {
+    log(`orders connection now open to with OrderStream node`);
+    const subscriptionMessage = JSON.stringify({
+        jsonrpc: "2.0",
+        id: ordersId,
+        method: "subscription.start",
+        params: {
+            eventName: "orders"
+        }
+    });
+    sendWrapper(osOrders, subscriptionMessage);
+}
+
+osOrders.onmessage = (msg) => {
+    const parsed = JSON.parse(msg.data.toString());
+    const orders = parsed.result;
+    if (!orders || !_.isArray(orders)) {
+        log(`skipping because no orders`)
+        return;
+    } 
+    log(`adding ${orders.length} new orders`);
+    orders.forEach(async rawOrder => {
+        const order = await parseOrder(paradigm, rawOrder);
+        dm.addOrder(order);
+    });
 }
 
 // subscribe to paradigmcore JSONRPC 
