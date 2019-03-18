@@ -25,7 +25,7 @@ export function addBlockTime(blockTimes: number[], blockTime: number, limit: num
     }
 }
 
-export function queryState(ws: WebSocket, path): Promise<any> {
+export function queryState(ws: WebSocket, path: string, timeout: number = 3500): Promise<any> {
     return new Promise((resolve, reject) => {
         const reqid = uuid();
         ws.send(JSON.stringify({
@@ -37,7 +37,7 @@ export function queryState(ws: WebSocket, path): Promise<any> {
         const timer = setTimeout(() => {
             ws.off("message", handler);
             reject(`timeout: failed query: "${path}"`);
-        }, 3500);
+        }, timeout);
         const handler = (msg) => {
             const parsed = JSON.parse(msg.toString());
             if (parsed.id === reqid) {

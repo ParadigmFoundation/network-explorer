@@ -1,25 +1,25 @@
 interface INetworkData {
     token: {
-        total_supply?: number;
-        price?: number;
+        total_supply?: string;
+        price?: string;
     }
     bandwidth: {
-        total_limit?: number;
-        total_orders?: number;
-        remaining_limit?: number;
-        number_posters?: number;
-        sec_to_next_period?: number;
-        rebalance_period_number?: number;
-        period_end_eth_block?: number;
-        current_eth_block?: number;
+        total_limit?: string;
+        total_orders?: string;
+        remaining_limit?: string;
+        number_posters?: string;
+        sec_to_next_period?: string;
+        rebalance_period_number?: string;
+        period_end_eth_block?: string;
+        current_eth_block?: string;
     }
     network: {
-        block_height?: number;
-        last_block_time?: number;
-        avg_block_interval?: number;
-        number_validators?: number;
-        total_validator_stake?: number;
-        total_poster_stake?: number;
+        block_height?: string;
+        last_block_time?: string;
+        avg_block_interval?: string;
+        number_validators?: string;
+        total_validator_stake?: string;
+        total_poster_stake?: string;
     }
     transactions?: IOrder[];
     validators?: IValidator[];
@@ -34,12 +34,13 @@ interface IOrder {
 }
 
 interface IValidator {
-    moniker: string;
-    stake: number;
-    reward: number;
-    uptime_percent: number;
-    first_block: number;
-    last_voted: number;
+    public_key: string;
+    stake: string;
+    reward: string;
+    uptime_percent: string;
+    first_block: string;
+    last_voted: string;
+    power: string;
 }
 
 interface Constructable<T> {

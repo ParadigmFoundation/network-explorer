@@ -22,8 +22,7 @@ import { Server } from "ws";
 
 // local functions
 import { queryState, sendWrapper, log, warn, error } from "./functions";
-import { DataManager } from "./DataManager";
-import { fields as defs } from "./paths";
+import { CoreData } from "./CoreData";
 
 // destructure config
 const { ORDERSTREAM_NODE_URL, PORT, AVERAGE_OVER } = process.env;
@@ -37,7 +36,7 @@ interface IClientMap {
 }
 
 // data tracker will store and update network data
-let dm: DataManager;
+let netData: CoreData;
 
 // const paradigm = new Paradigm()
 const clients: IClientMap = {};
@@ -64,7 +63,7 @@ osSubscription.onmessage = async (msg) => {
     if (_.isNaN(parseInt(time))) return;
 
     // update block data
-    dm.updateBlockData(height, time);
+    netData.updateBlockData(height, time);
 
     // skip broadcast if no clients 
     if (Object.keys(clients).length === 0) {
@@ -75,7 +74,7 @@ osSubscription.onmessage = async (msg) => {
     // update clients with new data
     if (height && time) {
         let counter = 0;
-        const data = dm.getLatest();
+        const data = netData.toJSON();
         Object.keys(clients).forEach((serverId) => {
             const { client, id } = clients[serverId];
             if (client.readyState === client.OPEN) {
@@ -101,7 +100,7 @@ osQuery.onerror = (msg) => {
 
 osQuery.onopen = () => {
     log(`query connection now open to with OrderStream node`);
-    dm = new DataManager(defs, ORDERSTREAM_NODE_URL, parseInt(AVERAGE_OVER), 10000);
+    netData = new CoreData(osQuery, paradigm, parseInt(AVERAGE_OVER));
 }
 
 // subscribe to paradigmcore JSONRPC 
