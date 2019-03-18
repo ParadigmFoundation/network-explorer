@@ -124,7 +124,8 @@ export class DataManager {
             power = await this.query(`validators/${id}/power`, 10000);
 
         const currHeight = parseInt(this.getLatest("network/block_height"));
-        const uptimePercent = Math.floor(100 * (total / ((currHeight - first))));
+        const firstBlock = parseInt(first);
+        const uptimePercent = Math.floor(100 * (total / ((currHeight - firstBlock))));
         
         // assign values (raw and computed) to validator object
         validator["public_key"] = key;
