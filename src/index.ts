@@ -26,7 +26,7 @@ import { DataManager } from "./DataManager";
 import { fields as defs } from "./paths";
 
 // destructure config
-const { ORDERSTREAM_NODE_URL, PORT, AVERAGE_OVER } = process.env;
+const { ORDERSTREAM_NODE_URL, PORT, AVERAGE_OVER, VALIDATOR_INTERVAL } = process.env;
 
 // local interface definition (requires import type)
 interface IClientMap {
@@ -101,7 +101,11 @@ osQuery.onerror = (msg) => {
 
 osQuery.onopen = () => {
     log(`query connection now open to with OrderStream node`);
-    dm = new DataManager(defs, ORDERSTREAM_NODE_URL, parseInt(AVERAGE_OVER), 10000);
+    dm = new DataManager(
+        defs,
+        ORDERSTREAM_NODE_URL,
+        parseInt(AVERAGE_OVER),
+        parseInt(VALIDATOR_INTERVAL));
 }
 
 // subscribe to paradigmcore JSONRPC 

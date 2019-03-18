@@ -42,6 +42,7 @@ export class DataManager {
     ) {
         this.keys = [];
         this.values = {};
+        this.validators = [];
 
         this.averageOver = averageOver;
         this.defs = definitions;
@@ -77,21 +78,19 @@ export class DataManager {
 
     private updateValidators(): () => Promise<void> {
         return async () => {
-            const validators = [];
-            const pending = [];
+            this.validators = [];
             try {
                 // get the current list of validator IDs
-                const rawIds = await this.query("validators");
+                const rawIds = await this.query("validators", 10000);
                 const valListArr = rawIds.slice(1, -1).split(",");
-                valListArr.forEach(id => {
-                    pending.push(this.getValidatorInfo(id));                     
-                });
-                const resultArr = await Promise.all(pending);
-                resultArr.forEach(validator => validators.push(validator));
+                for (let i = 0; i < valListArr.length; i ++) {
+                    const id = valListArr[i];
+                    const validator = await this.getValidatorInfo(id); 
+                    this.validators.push(validator);
+                }
             } catch (err) {
                 error(`unable to update validator info: ${err.message}`);
             }
-            this.validators = validators;
         }
     }
 
