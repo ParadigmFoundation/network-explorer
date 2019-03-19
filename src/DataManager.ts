@@ -101,7 +101,6 @@ export class DataManager {
 
     private async getValidatorInfo(id: string): Promise<IValidator> {
         const validator = {};
-        const pending = [];
         const fields = [
             "totalVotes", 
             "firstVote",
@@ -111,16 +110,11 @@ export class DataManager {
             "power"
         ]
 
-        fields.forEach(field => { 
-            pending.push(this.query(`validators/${id}/${field}`, 10000));
-        });
-
         const
             total = await this.query(`validators/${id}/totalVotes`, 10000),
             first = await this.query(`validators/${id}/firstVote`, 10000),
             last = await this.query(`validators/${id}/lastVoted`, 10000),
             key = await this.query(`validators/${id}/publicKey`, 10000),
-            stake = await this.query(`validators/${id}/balance`, 10000),
             power = await this.query(`validators/${id}/power`, 10000);
 
         const currHeight = parseInt(this.getLatest("network/block_height"));
@@ -129,7 +123,6 @@ export class DataManager {
         
         // assign values (raw and computed) to validator object
         validator["public_key"] = key;
-        validator["stake"] = stake;
         validator["uptime_percent"] = uptimePercent.toString();
         validator["first_block"] = first;
         validator["last_voted"] = last;
@@ -137,7 +130,8 @@ export class DataManager {
         
         // @todo update
         validator["reward"] = "0"; // temporary
-        console.log(JSON.stringify(validator));
+        validator["stake"] = power;
+    
         return validator as IValidator;
     }
 
