@@ -101,14 +101,6 @@ export class DataManager {
 
     private async getValidatorInfo(id: string): Promise<IValidator> {
         const validator = {};
-        const fields = [
-            "totalVotes", 
-            "firstVote",
-            "lastVoted",
-            "publicKey",
-            "balance",
-            "power"
-        ]
 
         const
             total = await this.query(`validators/${id}/totalVotes`, 10000),
@@ -138,9 +130,9 @@ export class DataManager {
     private updateVal(key: string): () => Promise<void> {
         return async () => {
             const value = await this.callFunc(key);
-            if (!value || value === "") {
-                warn(`not updating because we got null value for key '${key}'`);
-            } else {
+            if (!value || value === "" || value === "NaN" || isNaN(value as any)) {
+                warn(`not updating because we got null value for key '${key}' as '${value}'`);
+            }else {
                 this.redis.set(key, value);
                 log(`set new value for '${key}' as '${value}'`);
             }
