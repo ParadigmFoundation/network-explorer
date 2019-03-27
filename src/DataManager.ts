@@ -2,7 +2,7 @@ import * as WebSocket from "ws";
 import * as Paradigm from "paradigm-connect";
 import * as uuid from "uuid/v4";
 import { isUndefined, cloneDeep } from "lodash";
-import { log, error, warn } from "./functions";
+import { log, error, warn, executeBatchQuery, createBatchQueryRequest } from "./functions";
 import { RedisWrapper } from "./RedisWrapper";
 
 interface QueryDefinition {
@@ -78,7 +78,7 @@ export class DataManager {
         });
 
         // perform initial validator update
-        await this.updateValidators()();
+        setTimeout(this.updateValidators(), 10000);
     }
 
     private updateValidators(): () => Promise<void> {
@@ -94,6 +94,7 @@ export class DataManager {
                     this.validators.push(validator);
                 }
             } catch (err) {
+                console.log(err);
                 error(`unable to update validator info: ${err.message}`);
             }
         }
@@ -102,29 +103,38 @@ export class DataManager {
     private async getValidatorInfo(id: string): Promise<IValidator> {
         const validator = {};
 
-        const
-            total = await this.query(`validators/${id}/totalVotes`, 10000),
-            first = await this.query(`validators/${id}/firstVote`, 10000),
-            last = await this.query(`validators/${id}/lastVoted`, 10000),
-            key = await this.query(`validators/${id}/publicKey`, 10000),
-            power = await this.query(`validators/${id}/power`, 10000);
+        const requests = createBatchQueryRequest([
+            `validators/${id}/totalVotes`,
+            `validators/${id}/firstVote`,
+            `validators/${id}/lastVoted`,
+            `validators/${id}/publicKey`,
+            `validators/${id}/power`,
+        ]);
 
-        const currHeight = parseInt(this.getLatest("network/block_height"));
-        const firstBlock = parseInt(first);
-        const uptimePercent = Math.floor(100 * (total / ((currHeight - firstBlock))));
+        const batchRes = await executeBatchQuery(this.conn, requests, 10000);
+
+        if (batchRes && batchRes.length > 0) {
+            const [ total, first, last, key, power ] = batchRes;
+
+            const currHeight = parseInt(this.getLatest("network/block_height"));
+            const firstBlock = parseInt(first);
+            const uptimePercent = Math.floor(100 * (total / ((currHeight - firstBlock))));
+            
+            // assign values (raw and computed) to validator object
+            validator["public_key"] = key;
+            validator["uptime_percent"] = uptimePercent.toString();
+            validator["first_block"] = first;
+            validator["last_voted"] = last;
+            validator["power"] = power;
+            
+            // @todo update
+            validator["reward"] = "0"; // temporary
+            validator["stake"] = power;
         
-        // assign values (raw and computed) to validator object
-        validator["public_key"] = key;
-        validator["uptime_percent"] = uptimePercent.toString();
-        validator["first_block"] = first;
-        validator["last_voted"] = last;
-        validator["power"] = power;
-        
-        // @todo update
-        validator["reward"] = "0"; // temporary
-        validator["stake"] = power;
-    
-        return validator as IValidator;
+            return validator as IValidator;
+        } else {
+            throw new Error("failed");
+        }
     }
 
     private updateVal(key: string): () => Promise<void> {
@@ -155,16 +165,11 @@ export class DataManager {
     private query(path, timeout = 5000): Promise<any> {
         return new Promise((resolve, reject) => {
             const reqid = uuid();
-            this.conn.send(JSON.stringify({
-                jsonrpc: "2.0",
-                id: reqid,
-                method: "state.query",
-                params: { path }
-            }));
             const timer = setTimeout(() => {
+                clearInterval(timer);
                 this.conn.removeListener("message", handler);
                 warn(`query failed due to request timeout for: "${path}"`);
-                resolve();
+                reject(`query (rejects) due to request timeout for: "${path}"`);
             }, timeout);
             const handler = (msg) => {
                 const parsed = JSON.parse(msg.toString());
@@ -175,6 +180,12 @@ export class DataManager {
                 }
             };
             this.conn.addListener("message", handler);
+            this.conn.send(JSON.stringify({
+                jsonrpc: "2.0",
+                id: reqid,
+                method: "state.query",
+                params: { path }
+            }));
         });
     }
 

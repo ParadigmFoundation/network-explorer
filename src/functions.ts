@@ -37,14 +37,9 @@ export function addBlockTime(blockTimes: number[], blockTime: number, limit: num
 export function queryState(ws: WebSocket, path: string, timeout: number = 3500): Promise<any> {
     return new Promise((resolve, reject) => {
         const reqid = uuid();
-        ws.send(JSON.stringify({
-            jsonrpc: "2.0",
-            id: reqid,
-            method: "state.query",
-            params: { path }
-        }));
         const timer = setTimeout(() => {
             ws.off("message", handler);
+            clearInterval(timer);
             reject(`timeout: failed query: "${path}"`);
         }, timeout);
         const handler = (msg) => {
@@ -56,9 +51,57 @@ export function queryState(ws: WebSocket, path: string, timeout: number = 3500):
             }
         };
         ws.on("message", handler);
+        ws.send(JSON.stringify({
+            jsonrpc: "2.0",
+            id: reqid,
+            method: "state.query",
+            params: { path }
+        }));
     }).catch((err) => {
         warn(`failed query: ${err}`);
     });
+}
+
+export function executeBatchQuery(ws, batch, timeout:number = 5000): Promise<any> {
+    return new Promise((resolve, reject) => {
+        let responses = [];
+        const reqid = uuid();
+        const timer = setTimeout(() => {
+            ws.off("message", handler);
+            clearInterval(timer);
+            reject(`timeout: failed batch query`);
+        }, timeout);
+        const handler = (msg) => {
+            const parsed = JSON.parse(msg.toString());
+            if (!Array.isArray(parsed)) {
+                return;
+            } else {
+                parsed.forEach((v, i) => {
+                    responses.push(v.result.response.info);
+                });
+                clearInterval(timer);
+                resolve(responses);
+            }
+        };
+        ws.on("message", handler);
+        ws.send(JSON.stringify(batch));
+    }).catch((err) => {
+        warn(`\nfailed batch query: ${err}\n`);
+    });  
+}
+
+export function createBatchQueryRequest(paths: string[]): any[] {
+    let requests = [];
+    paths.forEach((path) => {
+        const request = {
+            jsonrpc: "2.0",
+            id: uuid(),
+            method: "state.query",
+            params: { path }
+        };
+        requests.push(request);
+    });
+    return requests;
 }
 
 export function sendWrapper(ws: WebSocket, data: string | Buffer): void {

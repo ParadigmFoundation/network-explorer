@@ -25,7 +25,7 @@ export const fields = {
         }
     },
     "bandwidth/remaining_limit": {
-        updateEvery: 3000,
+        updateEvery: 4000,
         updateFunc: async (_this, paradigm, query, db) => {
             const totalLimitStr = _this.getLatest("bandwidth/total_limit");
             const totalLimit = parseInt(totalLimitStr);
@@ -39,7 +39,7 @@ export const fields = {
         }
     },
     "bandwidth/number_posters": {
-        updateEvery: 10000,
+        updateEvery: 60000,
         updateFunc: async (_this, paradigm, query, db) => {
             const raw = await query.call(_this, "posters");
             const arr = raw.split(",");
@@ -47,7 +47,7 @@ export const fields = {
         }
     },
     "bandwidth/sec_to_next_period": {
-        updateEvery: 3000,
+        updateEvery: 3500,
         updateFunc: async (_this, paradigm, query, db) => {
             // initial query
             const raw = await query.call(_this, "round/endsAt");

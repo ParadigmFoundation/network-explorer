@@ -203,7 +203,7 @@ server.on("connection", (socket, request) => {
                 resp = raw.toString();
             } else if (method === "limit") {
                 const path = `posters/${param.toLowerCase()}/limit`;
-                resp = await queryState(osQuery, path);
+                resp = await queryState(osQuery, path, 15000);
             }
             if (resp) {
                 res.data = resp;
