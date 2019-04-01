@@ -31,7 +31,8 @@ const {
     PORT,
     AVERAGE_OVER,
     VALIDATOR_INTERVAL,
-    ORDER_NUMBER
+    ORDER_NUMBER,
+    HOSTNAME
 } = process.env;
 
 // local interface definition (requires import type)
@@ -49,7 +50,7 @@ let dm: DataManager;
 const clients: IClientMap = {};
 
 // setup WS server
-const server = new Server({ port: parseInt(PORT) });
+const server = new Server({ port: parseInt(PORT), host: HOSTNAME });
 
 // setup web3 connection
 const paradigm = new Paradigm();
