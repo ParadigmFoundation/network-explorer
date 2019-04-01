@@ -5,7 +5,10 @@ import { rejects } from "assert";
 export class RedisWrapper {
     private db: redis.RedisClient;
     constructor() {
-        this.db = redis.createClient();
+        this.db = redis.createClient({
+            port: parseInt(process.env.REDIS_PORT) || 6379,
+            host: process.env.REDIS_HOST || "127.0.0.1"
+        });
         this.db.on("error", this.errorHandler());
     }
     private errorHandler(): (err) => void {
