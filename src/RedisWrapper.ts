@@ -1,22 +1,18 @@
-import * as redis from "redis";
-import { error } from "./functions";
-import { rejects } from "assert";
+import Redis from "ioredis";
+
+const { REDIS_PORT = "6379", REDIS_HOST = "localhost" } = process.env;
 
 export class RedisWrapper {
-    private db: redis.RedisClient;
+    private readonly db: Redis;
+
     constructor() {
-        this.db = redis.createClient({
-            port: parseInt(process.env.REDIS_PORT) || 6379,
-            host: process.env.REDIS_HOST || "127.0.0.1"
+        this.db = new Redis(parseInt(REDIS_PORT), REDIS_HOST);
+        this.db.on("error", (err: any) => {
+            console.error(`error encountered with redis connection: ${err}`);
         });
-        this.db.on("error", this.errorHandler());
     }
-    private errorHandler(): (err) => void {
-        return err => {
-            error(`error encountered with redis connection: ${err}`);
-        }
-    }
-    public get(key: string): Promise<string> {
+
+    public async get(key: string): Promise<string> {
         return new Promise((resolve, reject) => {
             this.db.get(key, (err, reply) => {
                 if (err) {
@@ -27,23 +23,23 @@ export class RedisWrapper {
             });
         });
     }
-    public set(key: string, value: string): Promise<void> {
-        if (value === undefined || !value) {
-            value = "";
-        }
+
+    public async set(key: string, value: any): Promise<void> {
+        const val = value === undefined || !value ? "" : value.toString();
         return new Promise((resolve, reject) => {
-            this.db.set(key, value, (err, reply) => {
+            this.db.set(key, val, (err, reply) => {
                 if (err || reply !== "OK") {
                     reject(err);
                 } else {
                     resolve();
                 }
             });
-        })
+        });
     }
-    public purgeAll(): Promise<void> {
+
+    public async purgeAll(): Promise<void> {
         return new Promise((resolve, reject) => {
-            this.db.sendCommand("FLUSHALL", (err, reply) => {
+            this.db.flushall((err, reply) => {
                 if (err || reply !== "OK") {
                     reject(err);
                 } else {

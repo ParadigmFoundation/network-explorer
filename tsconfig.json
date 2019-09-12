@@ -1,15 +1,12 @@
 {
+    "extends": "@kosu/tsc-config",
     "compilerOptions": {
-        "outDir": "./dist",
-        "baseUrl": "./",
-        "target": "esnext",
-        "module": "commonjs",
-        "removeComments": true,
-        "noResolve": false,
+        "outDir": "dist",
+        "rootDir": "src",
         "resolveJsonModule": true,
-        "typeRoots": ["./node_modules/@types"],
+        "sourceMap": true,
+        "moduleResolution": "node",
+        "typeRoots": ["node_modules/@types", "src/types.d.ts"]
     },
-    "include":[
-        "./src",
-    ],
+    "include": ["./src/**/*", "../kosu-system-contracts/src/types.d.ts"]
 }
